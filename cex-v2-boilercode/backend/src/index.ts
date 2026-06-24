@@ -32,8 +32,21 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173")
 //   },
 //   credentials: true,
 // }));
+
+console.log("ALLOWED_ORIGINS =", ALLOWED_ORIGINS);
+
 app.use(cors({
-  origin: true,
+  origin: (origin, cb) => {
+    console.log("Incoming origin =", origin);
+
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      return cb(null, true);
+    }
+
+    console.log("BLOCKED ORIGIN =", origin);
+
+    cb(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true,
 }));
 app.use(express.json());
