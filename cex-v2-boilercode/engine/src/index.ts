@@ -124,21 +124,25 @@ async function handleEngineRequest(message: EngineRequest): Promise<unknown> {
 // Startup: hydrate in-memory state from Postgres, then start processing
 
 
-await hydrateFromDB();
-
-console.log(`Engine listening on Redis queue: ${env.incomingQueue}`);
+// Start health server immediately so deployment platforms can health-check
+// during the (potentially slow) DB hydration phase.
+let engineReady = false;
 const app = express();
 app.get("/health", (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, ready: engineReady });
 });
-
 app.listen(process.env.PORT || 10000, () => {
   console.log("Engine health server started");
 });
 
+await hydrateFromDB();
+engineReady = true;
+
+console.log(`Engine listening on Redis queue: ${env.incomingQueue}`);
+
 for (;;) {
   
-  const item = await brokerClient.brPop(env.incomingQueue, 0);
+  const item = await brokerClient.brPop(env.incomingQueue, 5);
   if (!item) continue;
 
   let message: EngineRequest;
